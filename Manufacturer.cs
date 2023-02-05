@@ -78,6 +78,11 @@ namespace SyxPack
             return builder.ToString();
         }
 
+        public byte[] ToData()
+        {
+            return this.Identifier;
+        }
+
         public static ManufacturerDefinition Find(byte[] identifier)
         {
             // NOTE: Need to compare the contents of the two byte arrays; simply using Equals would

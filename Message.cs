@@ -130,8 +130,8 @@ namespace SyxPack
         {
             var builder = new StringBuilder();
 
-            builder.Append(string.Format("Manufacturer: {0}\n", this.Manufacturer));
-            builder.Append(string.Format("Payload: {0} bytes", this.Payload?.Count));
+            builder.AppendLine(string.Format("Manufacturer: {0}", this.Manufacturer));
+            builder.AppendLine(string.Format("Payload: {0} bytes", this.Payload?.Count));
 
             return builder.ToString();
         }
@@ -139,12 +139,21 @@ namespace SyxPack
         public byte[] ToData()
         {
             var result = new List<byte>();
+
             result.Add(Constants.Initiator);
+
+            if (this.Manufacturer != null)
+            {
+                result.AddRange(this.Manufacturer.ToData());
+            }
+
             if (this.Payload != null)
             {
                 result.AddRange(this.Payload);
             }
+
             result.Add(Constants.Terminator);
+
             return result.ToArray();
         }
     }
