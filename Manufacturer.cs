@@ -78,9 +78,9 @@ namespace SyxPack
             return builder.ToString();
         }
 
-        public byte[] ToData()
+        public List<byte> ToData()
         {
-            return this.Identifier;
+            return this.Identifier.ToList();
         }
 
         public static ManufacturerDefinition Find(byte[] identifier)
