@@ -26,13 +26,11 @@ namespace SyxPack
     {
         public ManufacturerKind Kind { get; }
         public byte[] Identifier { get; }  // one or three bytes
-        
-        public ManufacturerGroup Group 
-        { 
+
+        public ManufacturerGroup Group
+        {
             get
             {
-                var b = Identifier[0];
-                var b1 = Identifier[1];
                 ManufacturerGroup group = ManufacturerGroup.Development;
 
                 switch (Kind)
@@ -42,6 +40,7 @@ namespace SyxPack
                         break;
 
                     case ManufacturerKind.Standard:
+                        var b = Identifier[0];
                         if (b >= 0x01 && b <= 0x3F)
                         {
                             group = ManufacturerGroup.NorthAmerican;
@@ -57,6 +56,7 @@ namespace SyxPack
                         break;
 
                     case ManufacturerKind.Extended:
+                        var b1 = Identifier[1];
                         if ((b1 & (1 << 6)) != 0)  // 0x4x
                         {
                             group = ManufacturerGroup.Japanese;
@@ -72,15 +72,15 @@ namespace SyxPack
                         break;
 
                     default:
-                        break;                        
+                        break;
                 }
 
                 return group;
             }
         }
-        
-        public string Name 
-        { 
+
+        public string Name
+        {
             get
             {
                 string? name = "Unknown";  // nullable to keep the compiler happy
@@ -133,7 +133,7 @@ namespace SyxPack
                         Kind = ManufacturerKind.Standard;
                     }
                     break;
-                
+
                 case 3:
                     if (identifier[0] != 0x00)
                     {
@@ -149,7 +149,7 @@ namespace SyxPack
                     throw new ArgumentException("Identifier must have one or three bytes");
             }
 
-            Identifier = identifier;            
+            Identifier = identifier;
         }
 
         public override string ToString()
@@ -352,7 +352,7 @@ namespace SyxPack
             { "004004", "Xing Inc." },
             { "004005", "Alpha Theta Corporation" },
             { "004006", "Pioneer Corporation" },
-            { "004007", "Slik Corporation" },        
+            { "004007", "Slik Corporation" },
         };
     }
 }
