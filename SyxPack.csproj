@@ -5,8 +5,8 @@
     <LangVersion>10.0</LangVersion>
 
     <PackageId>SyxPack</PackageId>
-    <Version>0.3.0</Version>
-    <Authors>Jere Käpyaho</Authors>
+    <Version>0.4.0</Version>
+    <Authors>Conifer Productions Oy</Authors>
     <Company>Conifer Productions Oy</Company>
 
     <PackageLicenseExpression>MIT</PackageLicenseExpression>

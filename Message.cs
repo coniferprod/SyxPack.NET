@@ -96,12 +96,12 @@ namespace SyxPack
                 case 0x00:  // Extended manufacturer
                     return new ManufacturerSpecificMessage(
                         GetPayload(4),
-                        ManufacturerDefinition.Find(new byte[] { data[1], data[2], data[3] }));
+                        new ManufacturerDefinition(new byte[] { data[1], data[2], data[3] }));
 
                 default:  // Standard manufacturer
                     return new ManufacturerSpecificMessage(
                         GetPayload(),
-                        ManufacturerDefinition.Find(new byte[] { data[1] }));
+                        new ManufacturerDefinition(new byte[] { data[1] }));
             }
         }
 
@@ -156,7 +156,7 @@ namespace SyxPack
 
     public class ManufacturerSpecificMessage : Message
     {
-        public ManufacturerDefinition Manufacturer { get; set; }
+        public ManufacturerDefinition Manufacturer { get; }
 
         public ManufacturerSpecificMessage(byte[] data, ManufacturerDefinition manufacturer)
             : base(data)

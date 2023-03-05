@@ -12,31 +12,144 @@ namespace SyxPack
         Development,
         Standard,
         Extended,
-        Unknown
     }
 
     public enum ManufacturerGroup
     {
-        American,
-        EuropeanOrOther,
+        NorthAmerican,
+        EuropeanAndOther,
         Japanese,
-        Other,
-        Unknown
+        Development,
     }
 
     public class ManufacturerDefinition
     {
-        public ManufacturerKind Kind { get; set; }
-        public byte[] Identifier { get; set; }  // one or three bytes
-        public ManufacturerGroup Group { get; set; }
-        public string Name { get; set; }
+        public ManufacturerKind Kind { get; }
+        public byte[] Identifier { get; }  // one or three bytes
+        
+        public ManufacturerGroup Group 
+        { 
+            get
+            {
+                var b = Identifier[0];
+                var b1 = Identifier[1];
+                ManufacturerGroup group = ManufacturerGroup.Development;
 
-        public ManufacturerDefinition()
+                switch (Kind)
+                {
+                    case ManufacturerKind.Development:
+                        group = ManufacturerGroup.Development;
+                        break;
+
+                    case ManufacturerKind.Standard:
+                        if (b >= 0x01 && b <= 0x3F)
+                        {
+                            group = ManufacturerGroup.NorthAmerican;
+                        }
+                        else if (b >= 0x40 && b <= 0x5F)
+                        {
+                            group = ManufacturerGroup.Japanese;
+                        }
+                        else
+                        {
+                            group = ManufacturerGroup.EuropeanAndOther;
+                        }
+                        break;
+
+                    case ManufacturerKind.Extended:
+                        if ((b1 & (1 << 6)) != 0)  // 0x4x
+                        {
+                            group = ManufacturerGroup.Japanese;
+                        }
+                        else if ((b1 & (1 << 5)) != 0)  // 0x2x
+                        {
+                            group = ManufacturerGroup.EuropeanAndOther;
+                        }
+                        else
+                        {
+                            group = ManufacturerGroup.NorthAmerican;
+                        }
+                        break;
+
+                    default:
+                        break;                        
+                }
+
+                return group;
+            }
+        }
+        
+        public string Name 
+        { 
+            get
+            {
+                string? name = "Unknown";  // nullable to keep the compiler happy
+
+                switch (Kind)
+                {
+                    case ManufacturerKind.Development:
+                        return "Development / Non-commercial";
+
+                    default:
+                        if (ManufacturerNames.TryGetValue(ManufacturerKey, out name))
+                        {
+                            return name;
+                        }
+                        break;
+                }
+
+                return name!;  // explicitly assigned, so can be force-unwrapped
+            }
+        }
+
+        // Constructs a key to the manufacturer name dictionary from the identifier.
+        private string ManufacturerKey
         {
-            Kind = ManufacturerKind.Unknown;
-            Identifier = new byte[] { };
-            Group = ManufacturerGroup.Unknown;
-            Name = string.Empty;
+            get
+            {
+                var key = new StringBuilder();
+                for (int i = 0; i < Identifier.Length; i++)
+                {
+                    key.AppendFormat("{0:X2}", Identifier[i]);
+                }
+                return key.ToString();
+            }
+        }
+
+        public ManufacturerDefinition(byte[] identifier)
+        {
+            switch (identifier.Length)
+            {
+                case 0:
+                    throw new ArgumentException("Identifier must have at least one byte");
+
+                case 1:
+                    if (identifier[0] == Constants.Development)
+                    {
+                        Kind = ManufacturerKind.Development;
+                    }
+                    else
+                    {
+                        Kind = ManufacturerKind.Standard;
+                    }
+                    break;
+                
+                case 3:
+                    if (identifier[0] != 0x00)
+                    {
+                        throw new ArgumentException("Extended identifier must start with 0x00");
+                    }
+                    else
+                    {
+                        Kind = ManufacturerKind.Extended;
+                    }
+                    break;
+
+                default:
+                    throw new ArgumentException("Identifier must have one or three bytes");
+            }
+
+            Identifier = identifier;            
         }
 
         public override string ToString()
@@ -49,31 +162,31 @@ namespace SyxPack
                 idString += string.Format("{0:X2}H", b);
             }
 
-            var group = "Unknown";
+            var groupName = string.Empty;
             switch (this.Group)
             {
-                case ManufacturerGroup.American:
-                    group = "American";
+                case ManufacturerGroup.NorthAmerican:
+                    groupName = "North American";
                     break;
 
-                case ManufacturerGroup.EuropeanOrOther:
-                    group = "European or other";
+                case ManufacturerGroup.EuropeanAndOther:
+                    groupName = "European & other";
                     break;
 
                 case ManufacturerGroup.Japanese:
-                    group = "Japanese";
+                    groupName = "Japanese";
                     break;
 
-                case ManufacturerGroup.Other:
-                    group = "Other";
+                case ManufacturerGroup.Development:
+                    groupName = "Development";
                     break;
 
                 default:
-                    group = "Unknown";
+                    groupName = "Unknown";
                     break;
             }
 
-            builder.Append(string.Format("{0} (id={1}, {2})", this.Name, idString, group));
+            builder.Append(string.Format("{0} (id={1}, {2})", this.Name, idString, groupName));
 
             return builder.ToString();
         }
@@ -83,6 +196,14 @@ namespace SyxPack
             return this.Identifier.ToList();
         }
 
+        public static readonly ManufacturerDefinition Development;
+
+        static ManufacturerDefinition()
+        {
+            Development = new ManufacturerDefinition(new byte[] { Constants.Development });
+        }
+
+/*
         public static ManufacturerDefinition Find(byte[] identifier)
         {
             // NOTE: Need to compare the contents of the two byte arrays; simply using Equals would
@@ -91,438 +212,147 @@ namespace SyxPack
             // If not found, returns default value for type -- so should be null?
             return result != null ? result : ManufacturerDefinition.Unknown;
         }
+*/
 
-        public static readonly ManufacturerDefinition Development;
-        public static readonly ManufacturerDefinition Unknown;
-
-        static ManufacturerDefinition()
+        public static readonly Dictionary<string, string> ManufacturerNames = new Dictionary<string, string>()
         {
-            Development = new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Development,
-                Identifier = new byte[] { Constants.Development },
-                Group = ManufacturerGroup.Other,
-                Name = "Development/Non-commercial"
-            };
+            { "01", "Sequential Circuits" },
+            { "02", "IDP" },
+            { "03", "Voyetra Turtle Beach, Inc." },
+            { "04", "Moog Music" },
+            { "05", "Passport Designs" },
+            { "06", "Lexicon Inc." },
+            { "07", "Kurzweil / Young Chang" },
+            { "08", "Fender" },
+            { "09", "MIDI9" },
+            { "0A", "AKG Acoustics" },
+            { "0B", "Voyce Music" },
+            { "0C", "WaveFrame (Timeline)" },
+            { "0D", "ADA Signal Processors, Inc." },
+            { "0E", "Garfield Electronics" },
+            { "0F", "Ensoniq" },
+            { "10", "Oberheim / Gibson Labs" },
+            { "11", "Apple" },
+            { "12", "Grey Matter Response" },
+            { "13", "Digidesign Inc." },
+            { "14", "Palmtree Instruments" },
+            { "15", "JLCooper Electronics" },
+            { "16", "Lowrey Organ Company" },
+            { "17", "Adams-Smith" },
+            { "18", "E-mu" },
+            { "19", "Harmony Systems" },
+            { "1A", "ART" },
+            { "1B", "Baldwin" },
+            { "1C", "Eventide" },
+            { "1D", "Inventronics" },
+            { "1E", "Key Concepts" },
+            { "1F", "Clarity" },
+            { "20", "Passac" },
+            { "21", "Proel Labs (SIEL)" },
+            { "22", "Synthaxe (UK)" },
+            { "23", "Stepp" },
+            { "24", "Hohner" },
+            { "25", "Twister" },
+            { "26", "Ketron s.r.l." },
+            { "27", "Jellinghaus MS" },
+            { "28", "Southworth Music Systems" },
+            { "29", "PPG (Germany)" },
+            { "2A", "JEN" },
+            { "2B", "Solid State Logic Organ Systems" },
+            { "2C", "Audio Veritrieb-P. Struven" },
+            { "2D", "Neve" },
+            { "2E", "Soundtracs Ltd." },
+            { "2F", "Elka" },
+            { "30", "Dynacord" },
+            { "31", "Viscount International Spa (Intercontinental Electronics)" },
+            { "32", "Drawmer" },
+            { "33", "Clavia Digital Instruments" },
+            { "34", "Audio Architecture" },
+            { "35", "Generalmusic Corp SpA" },
+            { "36", "Cheetah Marketing" },
+            { "37", "C.T.M." },
+            { "38", "Simmons UK" },
+            { "39", "Soundcraft Electronics" },
+            { "3A", "Steinberg Media Technologies GmbH" },
+            { "3B", "Wersi Gmbh" },
+            { "3C", "AVAB Niethammer AB" },
+            { "3D", "Digigram" },
+            { "3E", "Waldorf Electronics GmbH" },
+            { "3F", "Quasimidi" },
 
-            Unknown = new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Unknown,
-                Identifier = new byte[] { },
-                Group = ManufacturerGroup.Unknown,
-                Name = "Unknown"
-            };
-        }
+            { "000001", "Time/Warner Interactive" },
+            { "000002", "Advanced Gravis Comp. Tech Ltd." },
+            { "000003", "Media Vision" },
+            { "000004", "Dornes Research Group" },
+            { "000005", "K-Muse" },
+            { "000006", "Stypher" },
+            { "000007", "Digital Music Corp." },
+            { "000008", "IOTA Systems" },
+            { "000009", "New England Digital" },
+            { "00000A", "Artisyn" },
+            { "00000B", "IVL Technologies Ltd." },
+            { "00000C", "Southern Music Systems" },
+            { "00000D", "Lake Butler Sound Company" },
+            { "00000E", "Alesis Studio Electronics" },
+            { "00000F", "Sound Creation" },
+            { "000010", "DOD Electronics Corp." },
+            { "000011", "Studer-Editech" },
+            { "000012", "Sonus" },
+            { "000013", "Temporal Acuity Products" },
+            { "000014", "Perfect Fretworks" },
+            { "000015", "KAT Inc." },
 
-        public static readonly ManufacturerDefinition[] Manufacturers =
-        {
-            new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Standard,
-                Identifier = new byte[] { 0x01 },
-                Group = ManufacturerGroup.American,
-                Name = "Sequential Circuits"
-            },
+                // European & Other Group
+            { "002000", "Dream SAS" },
+            { "002001", "Strand Lighting" },
+            { "002002", "Amek Div of Harman Industries" },
+            { "002003", "Casa Di Risparmio Di Loreto" },
+            { "002004", "Böhm electronic GmbH" },
+            { "002005", "Syntec Digital Audio" },
+            { "002006", "Trident Audio Developments" },
+            { "002007", "Real World Studio" },
+            { "002008", "Evolution Synthesis, Ltd" },
+            { "002009", "Yes Technology" },
+            { "00200A", "Audiomatica" },
+            { "00200B", "Bontempi SpA (Sigma)" },
+            { "00200C", "F.B.T. Elettronica SpA" },
 
-            new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Standard,
-                Identifier = new byte[] { 0x02 },
-                Group = ManufacturerGroup.American,
-                Name = "IDP"
-            },
+            { "002029", "Focusrite/Novation" },
 
-            new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Standard,
-                Identifier = new byte[] { 0x03 },
-                Group = ManufacturerGroup.American,
-                Name = "Voyetra Turtle Beach, Inc."
-            },
+            { "40", "Kawai Musical Instruments MFG. CO. Ltd" },
+            { "41", "Roland Corporation" },
+            { "42", "Korg Inc." },
+            { "43", "Yamaha" },
+            { "44", "Casio Computer Co. Ltd" },
+                // 0x45 is not assigned
+            { "46", "Kamiya Studio Co. Ltd" },
+            { "47", "Akai Electric Co. Ltd." },
+            { "48", "Victor Company of Japan, Ltd." },
+            { "4B", "Fujitsu Limited" },
+            { "4C", "Sony Corporation" },
+            { "4E", "Teac Corporation" },
+            { "50", "Matsushita Electric Industrial Co. , Ltd" },
+            { "51", "Fostex Corporation" },
+            { "52", "Zoom Corporation" },
+            { "54", "Matsushita Communication Industrial Co., Ltd." },
+            { "55", "Suzuki Musical Instruments MFG. Co., Ltd." },
+            { "56", "Fuji Sound Corporation Ltd." },
+            { "57", "Acoustic Technical Laboratory, Inc." },
+                // 58h is not assigned
+            { "59", "Faith, Inc." },
+            { "5A", "Internet Corporation" },
+                // 5Bh is not assigned
+            { "5C", "Seekers Co. Ltd." },
+                // 5Dh and 5Eh are not assigned
+            { "5F", "SD Card Association" },
 
-            new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Standard,
-                Identifier = new byte[] { 0x04 },
-                Group = ManufacturerGroup.American,
-                Name = "Moog Music"
-            },
-
-            new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Standard,
-                Identifier = new byte[] { 0x05 },
-                Group = ManufacturerGroup.American,
-                Name = "Passport Designs"
-            },
-
-            new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Standard,
-                Identifier = new byte[] { 0x06 },
-                Group = ManufacturerGroup.American,
-                Name = "Lexicon Inc."
-            },
-
-            new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Standard,
-                Identifier = new byte[] { 0x07 },
-                Group = ManufacturerGroup.American,
-                Name = "Kurzweil / Young Chang"
-            },
-
-            new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Standard,
-                Identifier = new byte[] { 0x08 },
-                Group = ManufacturerGroup.American,
-                Name = "Fender"
-            },
-
-            new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Standard,
-                Identifier = new byte[] { 0x09 },
-                Group = ManufacturerGroup.American,
-                Name = "MIDI9"
-            },
-
-            new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Standard,
-                Identifier = new byte[] { 0x0A },
-                Group = ManufacturerGroup.American,
-                Name = "AKG Acoustics"
-            },
-
-            new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Standard,
-                Identifier = new byte[] { 0x0B },
-                Group = ManufacturerGroup.American,
-                Name = "Voyce Music"
-            },
-
-            new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Standard,
-                Identifier = new byte[] { 0x0C },
-                Group = ManufacturerGroup.American,
-                Name = "Waveframe (Timeline)"
-            },
-
-            new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Standard,
-                Identifier = new byte[] { 0x0D },
-                Group = ManufacturerGroup.American,
-                Name = "ADA Signal Processors, Inc."
-            },
-
-            new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Standard,
-                Identifier = new byte[] { 0x0E },
-                Group = ManufacturerGroup.American,
-                Name = "Garfield Electronics"
-            },
-
-            new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Standard,
-                Identifier = new byte[] { 0x0F },
-                Group = ManufacturerGroup.American,
-                Name = "Ensoniq"
-            },
-
-            new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Standard,
-                Identifier = new byte[] { 0x10 },
-                Group = ManufacturerGroup.American,
-                Name = "Oberheim / Gibson Labs"
-            },
-
-            new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Standard,
-                Identifier = new byte[] { 0x11 },
-                Group = ManufacturerGroup.American,
-                Name = "Apple"
-            },
-
-            new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Standard,
-                Identifier = new byte[] { 0x12 },
-                Group = ManufacturerGroup.American,
-                Name = "Gray Matter Response"
-            },
-
-            new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Standard,
-                Identifier = new byte[] { 0x13 },
-                Group = ManufacturerGroup.American,
-                Name = "Digidesign Inc."
-            },
-
-            new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Standard,
-                Identifier = new byte[] { 0x14 },
-                Group = ManufacturerGroup.American,
-                Name = "Palmtree Instruments"
-            },
-
-            // ...some items missing...
-
-            new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Standard,
-                Identifier = new byte[] { 0x18 },
-                Group = ManufacturerGroup.American,
-                Name = "E-MU"
-            },
-
-            new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Standard,
-                Identifier = new byte[] { 0x3A },
-                Group = ManufacturerGroup.EuropeanOrOther,
-                Name = "Steinberg Media Technologies GmbH"
-            },
-
-            new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Standard,
-                Identifier = new byte[] { 0x3E },
-                Group = ManufacturerGroup.EuropeanOrOther,
-                Name = "Waldorf Electronics GmbH"
-            },
-
-            // Extended / American
-
-            new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Extended,
-                Identifier = new byte[] { 0x00, 0x00, 0x0E },
-                Group = ManufacturerGroup.American,
-                Name = "Alesis Studio Electronics"
-            },
-
-            new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Extended,
-                Identifier = new byte[] { 0x00, 0x00, 0x3B },
-                Group = ManufacturerGroup.American,
-                Name = "Mark Of the Unicorn"
-            },
-
-            // Extended / Japanese
-
-            new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Standard,
-                Identifier = new byte[] { 0x40 },
-                Group = ManufacturerGroup.Japanese,
-                Name = "Kawai Musical Instruments MFG. CO. Ltd",
-            },
-
-            new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Standard,
-                Identifier = new byte[] { 0x41 },
-                Group = ManufacturerGroup.Japanese,
-                Name = "Roland Corporation",
-            },
-
-            new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Standard,
-                Identifier = new byte[] { 0x42 },
-                Group = ManufacturerGroup.Japanese,
-                Name = "Korg Inc."
-            },
-
-            new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Standard,
-                Identifier = new byte[] { 0x43 },
-                Group = ManufacturerGroup.Japanese,
-                Name = "Yamaha Corporation"
-            },
-
-            new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Standard,
-                Identifier = new byte[] { 0x44 },
-                Group = ManufacturerGroup.Japanese,
-                Name = "Casio Computer Co.Ltd"
-            },
-
-            new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Standard,
-                Identifier = new byte[] { 0x46 },
-                Group = ManufacturerGroup.Japanese,
-                Name = "Kamiya Studio Co.Ltd"
-            },
-
-            new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Standard,
-                Identifier = new byte[] { 0x47 },
-                Group = ManufacturerGroup.Japanese,
-                Name = "Akai Electric Co.Ltd."
-            },
-
-            new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Standard,
-                Identifier = new byte[] { 0x48 },
-                Group = ManufacturerGroup.Japanese,
-                Name = "Victor Company of Japan, Ltd."
-            },
-
-            new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Standard,
-                Identifier = new byte[] { 0x48 },
-                Group = ManufacturerGroup.Japanese,
-                Name = "Fujitsu Limited"
-            },
-
-            new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Standard,
-                Identifier = new byte[] { 0x4C },
-                Group = ManufacturerGroup.Japanese,
-                Name = "Sony Corporation"
-            },
-
-            new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Standard,
-                Identifier = new byte[] { 0x4E },
-                Group = ManufacturerGroup.Japanese,
-                Name = "Teac Corporation"
-            },
-
-            new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Standard,
-                Identifier = new byte[] { 0x50 },
-                Group = ManufacturerGroup.Japanese,
-                Name = "Matsushita Electric Industrial Co., Ltd"
-            },
-
-            new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Standard,
-                Identifier = new byte[] { 0x51 },
-                Group = ManufacturerGroup.Japanese,
-                Name = "Fostex Corporation"
-            },
-
-            new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Standard,
-                Identifier = new byte[] { 0x52 },
-                Group = ManufacturerGroup.Japanese,
-                Name = "Zoom Corporation"
-            },
-
-            new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Standard,
-                Identifier = new byte[] { 0x54 },
-                Group = ManufacturerGroup.Japanese,
-                Name = "Matsushita Communication Industrial Co., Ltd."
-            },
-
-            new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Standard,
-                Identifier = new byte[] { 0x55 },
-                Group = ManufacturerGroup.Japanese,
-                Name = "Suzuki Musical Instruments MFG.Co., Ltd."
-            },
-
-            new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Standard,
-                Identifier = new byte[] { 0x56 },
-                Group = ManufacturerGroup.Japanese,
-                Name = "Fuji Sound Corporation Ltd."
-            },
-
-            new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Standard,
-                Identifier = new byte[] { 0x57 },
-                Group = ManufacturerGroup.Japanese,
-                Name = "Acoustic Technical Laboratory, Inc."
-            },
-
-            new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Standard,
-                Identifier = new byte[] { 0x59 },
-                Group = ManufacturerGroup.Japanese,
-                Name = "Faith, Inc."
-            },
-
-            new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Standard,
-                Identifier = new byte[] { 0x5A },
-                Group = ManufacturerGroup.Japanese,
-                Name = "Internet Corporation"
-            },
-
-            new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Standard,
-                Identifier = new byte[] { 0x5C },
-                Group = ManufacturerGroup.Japanese,
-                Name = "Seekers Co.Ltd."
-            },
-
-            new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Standard,
-                Identifier = new byte[] { 0x5F },
-                Group = ManufacturerGroup.Japanese,
-                Name = "SD Card Association"
-            },
-
-            // Extended / Japanese
-
-            new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Extended,
-                Identifier = new byte[] { 0x00, 0x40, 0x00 },
-                Group = ManufacturerGroup.Japanese,
-                Name = "Crimson Technology Inc."
-            },
-
-            new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Extended,
-                Identifier = new byte[] { 0x00, 0x40, 0x01 },
-                Group = ManufacturerGroup.Japanese,
-                Name = "Softbank Mobile Corp"
-            },
-
-            new ManufacturerDefinition
-            {
-                Kind = ManufacturerKind.Extended,
-                Identifier = new byte[] { 0x00, 0x40, 0x03 },
-                Group = ManufacturerGroup.Japanese,
-                Name = "D & M Holdings Inc."
-            }
+            { "004000", "Crimson Technology Inc." },
+            { "004001", "Softbank Mobile Corp" },
+            { "004003", "D&M Holdings Inc." },
+            { "004004", "Xing Inc." },
+            { "004005", "Alpha Theta Corporation" },
+            { "004006", "Pioneer Corporation" },
+            { "004007", "Slik Corporation" },        
         };
     }
 }
