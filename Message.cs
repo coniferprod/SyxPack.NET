@@ -4,7 +4,7 @@ using System.Text;
 namespace SyxPack
 {
     // Header for Universal System Exclusive message
-    public class UniversalMessageHeader
+    public sealed class UniversalMessageHeader
     {
         public byte DeviceChannel { get; set; }
         public byte SubId1 { get; set; }
@@ -29,9 +29,9 @@ namespace SyxPack
         public List<byte> Payload;
 
         // Protected constructor for subclasses.
-        protected Message(byte[] data)
+        protected Message(byte[] payload)
         {
-            this.Payload = data.ToList();
+            this.Payload = payload.ToList();
         }
 
         // Creates a message from System Exclusive data bytes.
@@ -74,32 +74,35 @@ namespace SyxPack
             {
                 case Constants.Development:
                     return new ManufacturerSpecificMessage(
-                        GetPayload(),
-                        ManufacturerDefinition.Development
+                        ManufacturerDefinition.Development,
+                        GetPayload()
                     );
 
                 case Constants.UniversalNonRealTime:
                     return new UniversalMessage(
+                        GetUniversalMessageHeader(),
                         GetPayload(4),
-                        GetUniversalMessageHeader()
+                        false
                     );
 
                 case Constants.UniversalRealTime:
                     return new UniversalMessage(
-                        GetPayload(4),
                         GetUniversalMessageHeader(),
+                        GetPayload(4),
                         true
                     );
 
                 case 0x00:  // Extended manufacturer
                     return new ManufacturerSpecificMessage(
-                        GetPayload(4),  // payload starts after SysEx initiator and three-byte identifier
-                        new ManufacturerDefinition(new byte[] { data[1], data[2], data[3] }));
+                        new ManufacturerDefinition(new byte[] { data[1], data[2], data[3] }),
+                        GetPayload(4)  // payload starts after SysEx initiator and three-byte identifier
+                    );
 
                 default:  // Standard manufacturer
                     return new ManufacturerSpecificMessage(
-                        GetPayload(),
-                        new ManufacturerDefinition(new byte[] { data[1] }));
+                        new ManufacturerDefinition(new byte[] { data[1] }),
+                        GetPayload()
+                    );
             }
         }
 
@@ -107,13 +110,13 @@ namespace SyxPack
     }
 
     // Represents a Universal System Exclusive message.
-    public class UniversalMessage : Message
+    public sealed class UniversalMessage : Message
     {
         public UniversalMessageHeader Header { get; set; }
         public bool IsRealtime { get; set; }
 
-        public UniversalMessage(byte[] data, UniversalMessageHeader header, bool realtime = false)
-            : base(data)
+        public UniversalMessage(UniversalMessageHeader header, byte[] payload, bool realtime = false)
+            : base(payload)
         {
             this.Header = header;
             this.IsRealtime = realtime;
@@ -155,8 +158,8 @@ namespace SyxPack
         // Read-only property to get the manufacturer.
         public ManufacturerDefinition Manufacturer { get; }
 
-        protected ManufacturerSpecificMessage(byte[] data, ManufacturerDefinition manufacturer)
-            : base(data)
+        public ManufacturerSpecificMessage(ManufacturerDefinition manufacturer, byte[] payload)
+            : base(payload)
         {
             this.Manufacturer = manufacturer;
         }
@@ -167,7 +170,7 @@ namespace SyxPack
             var builder = new StringBuilder();
 
             builder.AppendLine(string.Format("Manufacturer: {0}", this.Manufacturer));
-            builder.AppendLine(string.Format("Payload: {0} bytes", this.Payload?.Count));
+            builder.AppendLine(string.Format("Payload: {0} bytes", this.Payload.Count));
 
             return builder.ToString();
         }

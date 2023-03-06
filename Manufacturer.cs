@@ -1,5 +1,3 @@
-#nullable enable
-
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -22,7 +20,7 @@ namespace SyxPack
         Development,
     }
 
-    public class ManufacturerDefinition
+    public sealed class ManufacturerDefinition
     {
         public ManufacturerKind Kind { get; }
 
