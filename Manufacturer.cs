@@ -25,8 +25,11 @@ namespace SyxPack
     public class ManufacturerDefinition
     {
         public ManufacturerKind Kind { get; }
-        public byte[] Identifier { get; }  // one or three bytes
 
+        // Manufacturer ID bytes, one or three
+        public byte[] Identifier { get; }
+
+        // Property to get the group of this manufacturer
         public ManufacturerGroup Group
         {
             get
@@ -79,43 +82,42 @@ namespace SyxPack
             }
         }
 
+        // Read-only property to get the name of this manufacturer, if available
         public string Name
         {
             get
             {
-                string? name = "Unknown";  // nullable to keep the compiler happy
-
                 switch (Kind)
                 {
                     case ManufacturerKind.Development:
                         return "Development / Non-commercial";
 
                     default:
-                        if (ManufacturerNames.TryGetValue(ManufacturerKey, out name))
+                        // Use any name we find with this key made from the manufacturer ID
+                        if (Names.TryGetValue(GetManufacturerKey(), out string? name))
                         {
                             return name;
                         }
                         break;
                 }
 
-                return name!;  // explicitly assigned, so can be force-unwrapped
+                return "(unknown)";
             }
         }
 
         // Constructs a key to the manufacturer name dictionary from the identifier.
-        private string ManufacturerKey
+        // The result is something like "40" or "00000E".
+        private string GetManufacturerKey()
         {
-            get
+            var key = new StringBuilder();
+            for (int i = 0; i < Identifier.Length; i++)
             {
-                var key = new StringBuilder();
-                for (int i = 0; i < Identifier.Length; i++)
-                {
-                    key.AppendFormat("{0:X2}", Identifier[i]);
-                }
-                return key.ToString();
+                key.AppendFormat("{0:X2}", Identifier[i]);
             }
+            return key.ToString();
         }
 
+        // Constructs a manufacturer from the identifier bytes (one or three)
         public ManufacturerDefinition(byte[] identifier)
         {
             switch (identifier.Length)
@@ -152,6 +154,7 @@ namespace SyxPack
             Identifier = identifier;
         }
 
+        // Gets a string representation of this manufacturer
         public override string ToString()
         {
             var builder = new StringBuilder();
@@ -191,30 +194,25 @@ namespace SyxPack
             return builder.ToString();
         }
 
+        // Gets the System Exclusive data of this manufacturer
         public List<byte> ToData()
         {
             return this.Identifier.ToList();
         }
 
+        // Pre-made instance for a "Development/Non-commercial" manufacturer
         public static readonly ManufacturerDefinition Development;
 
+        // Static initializer
         static ManufacturerDefinition()
         {
             Development = new ManufacturerDefinition(new byte[] { Constants.Development });
         }
 
-/*
-        public static ManufacturerDefinition Find(byte[] identifier)
-        {
-            // NOTE: Need to compare the contents of the two byte arrays; simply using Equals would
-            // compare the references.
-            var result = Array.Find(Manufacturers, element => element.Identifier.SequenceEqual(identifier));
-            // If not found, returns default value for type -- so should be null?
-            return result != null ? result : ManufacturerDefinition.Unknown;
-        }
-*/
-
-        public static readonly Dictionary<string, string> ManufacturerNames = new Dictionary<string, string>()
+        // Dictionary of manufacturer names obtained with the key you get from GetManufacturerKey().
+        // Private because the intention is that you first make a manufacturer using an identifier,
+        // and then you can get its name, if available.
+        private static readonly Dictionary<string, string> Names = new Dictionary<string, string>()
         {
             { "01", "Sequential Circuits" },
             { "02", "IDP" },

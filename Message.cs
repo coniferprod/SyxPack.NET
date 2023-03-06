@@ -1,19 +1,10 @@
-#nullable enable
-
-using System;
 using System.Collections.Generic;
 using System.Text;
 
 namespace SyxPack
 {
-    public enum MessageKind
-    {
-        UniversalNonRealTime,
-        UniversalRealTime,
-        ManufacturerSpecific,
-    }
-
-    public class UniversalHeader
+    // Header for Universal System Exclusive message
+    public class UniversalMessageHeader
     {
         public byte DeviceChannel { get; set; }
         public byte SubId1 { get; set; }
@@ -30,26 +21,32 @@ namespace SyxPack
         }
     }
 
+    // Abstract base class for System Exclusive messages.
     public abstract class Message
     {
-        public List<byte>? Payload;
+        // The payload of the message. This comprises the bytes between
+        // the SysEx initiator, manufacturer identifier, and the SysEx terminator.
+        public List<byte> Payload;
 
+        // Protected constructor for subclasses.
         protected Message(byte[] data)
         {
             this.Payload = data.ToList();
         }
 
-        /// Creates a message from System Exclusive data bytes.
+        // Creates a message from System Exclusive data bytes.
         public static Message Create(byte[] data)
         {
+            // Local method to extract the payload from the data
             byte[] GetPayload(int startIndex = 2)
             {
                 return data[startIndex .. ^1];  // leave out the last byte
             }
 
-            UniversalHeader GetUniversalHeader()
+            // Local method to extract the Universal message header from the data
+            UniversalMessageHeader GetUniversalMessageHeader()
             {
-                return new UniversalHeader
+                return new UniversalMessageHeader
                 {
                     DeviceChannel = data[2],
                     SubId1 = data[3],
@@ -57,6 +54,7 @@ namespace SyxPack
                 };
             }
 
+            // Minimum length is initiator + 1...3 bytes of manufacturer ID + terminator
             if (data.Length < 5)
             {
                 throw new ArgumentException($"Message too short! ({data.Length} < 5)");
@@ -83,19 +81,19 @@ namespace SyxPack
                 case Constants.UniversalNonRealTime:
                     return new UniversalMessage(
                         GetPayload(4),
-                        GetUniversalHeader()
+                        GetUniversalMessageHeader()
                     );
 
                 case Constants.UniversalRealTime:
                     return new UniversalMessage(
                         GetPayload(4),
-                        GetUniversalHeader(),
+                        GetUniversalMessageHeader(),
                         true
                     );
 
                 case 0x00:  // Extended manufacturer
                     return new ManufacturerSpecificMessage(
-                        GetPayload(4),
+                        GetPayload(4),  // payload starts after SysEx initiator and three-byte identifier
                         new ManufacturerDefinition(new byte[] { data[1], data[2], data[3] }));
 
                 default:  // Standard manufacturer
@@ -108,18 +106,20 @@ namespace SyxPack
         public abstract List<byte> ToData();
     }
 
+    // Represents a Universal System Exclusive message.
     public class UniversalMessage : Message
     {
+        public UniversalMessageHeader Header { get; set; }
         public bool IsRealtime { get; set; }
-        public UniversalHeader Header { get; set; }
 
-        public UniversalMessage(byte[] data, UniversalHeader header, bool realtime = false)
+        public UniversalMessage(byte[] data, UniversalMessageHeader header, bool realtime = false)
             : base(data)
         {
             this.Header = header;
             this.IsRealtime = realtime;
         }
 
+        // Gets a string representation of this message
         public override string ToString()
         {
             var builder = new StringBuilder();
@@ -132,38 +132,36 @@ namespace SyxPack
             return builder.ToString();
         }
 
+        // Gets the System Exclusive data for this message.
+        // This is ready for sending down the wire to a MIDI device,
+        // since it includes the SysEx initiator and terminator bytes.
         public override List<byte> ToData()
         {
             var result = new List<byte>();
-
             result.Add(Constants.Initiator);
-
             result.Add(this.IsRealtime ? Constants.UniversalRealTime : Constants.UniversalNonRealTime);
             result.Add(this.Header.DeviceChannel);
             result.Add(this.Header.SubId1);
             result.Add(this.Header.SubId2);
-
-            if (this.Payload != null)
-            {
-                result.AddRange(this.Payload);
-            }
-
+            result.AddRange(this.Payload);
             result.Add(Constants.Terminator);
-
             return result;
         }
     }
 
+    // Represents a manufacturer-specific System Exclusive message.
     public class ManufacturerSpecificMessage : Message
     {
+        // Read-only property to get the manufacturer.
         public ManufacturerDefinition Manufacturer { get; }
 
-        public ManufacturerSpecificMessage(byte[] data, ManufacturerDefinition manufacturer)
+        protected ManufacturerSpecificMessage(byte[] data, ManufacturerDefinition manufacturer)
             : base(data)
         {
             this.Manufacturer = manufacturer;
         }
 
+        // Gets a string representation of this message.
         public override string ToString()
         {
             var builder = new StringBuilder();
@@ -174,20 +172,16 @@ namespace SyxPack
             return builder.ToString();
         }
 
+        // Gets the System Exclusive data for this message.
+        // This is ready for sending down the wire to a MIDI device,
+        // since it includes the SysEx initiator and terminator bytes.
         public override List<byte> ToData()
         {
             var result = new List<byte>();
-
             result.Add(Constants.Initiator);
             result.AddRange(this.Manufacturer.ToData());
-
-            if (this.Payload != null)
-            {
-                result.AddRange(this.Payload);
-            }
-
+            result.AddRange(this.Payload);
             result.Add(Constants.Terminator);
-
             return result;
         }
     }
