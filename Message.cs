@@ -4,7 +4,7 @@ using System.Text;
 namespace SyxPack
 {
     // Header for Universal System Exclusive message
-    public sealed class UniversalMessageHeader
+    public sealed class UniversalMessageHeader : ISystemExclusiveData
     {
         public byte DeviceChannel { get; set; }
         public byte SubId1 { get; set; }
@@ -19,10 +19,24 @@ namespace SyxPack
 
             return builder.ToString();
         }
+
+        //
+        // ISystemExclusiveData implementation
+        //
+
+        public List<byte> Data
+        {
+            get
+            {
+                return new List<byte> { DeviceChannel, SubId1, SubId2 };
+            }
+        }
+
+        public int Length => 3;
     }
 
     // Abstract base class for System Exclusive messages.
-    public abstract class Message
+    public abstract class Message : ISystemExclusiveData
     {
         // The payload of the message. This comprises the bytes between
         // the SysEx initiator, manufacturer identifier, and the SysEx terminator.
@@ -107,10 +121,17 @@ namespace SyxPack
         }
 
         public abstract List<byte> ToData();
+
+        //
+        // ISystemExclusiveData implementation
+        //
+
+        public abstract List<byte> Data { get; }
+        public abstract int Length { get; }
     }
 
     // Represents a Universal System Exclusive message.
-    public sealed class UniversalMessage : Message
+    public sealed class UniversalMessage : Message, ISystemExclusiveData
     {
         public UniversalMessageHeader Header { get; set; }
         public bool IsRealtime { get; set; }
@@ -150,6 +171,32 @@ namespace SyxPack
             result.Add(Constants.Terminator);
             return result;
         }
+
+        //
+        // ISystemExclusiveData implementation
+        //
+
+        public override List<byte> Data
+        {
+            get
+            {
+                var result = new List<byte>();
+                result.Add(Constants.Initiator);
+                result.Add(this.IsRealtime ? Constants.UniversalRealTime : Constants.UniversalNonRealTime);
+                result.AddRange(this.Header.Data);
+                result.AddRange(this.Payload);
+                result.Add(Constants.Terminator);
+                return result;
+            }
+        }
+
+        public override int Length
+        {
+            get
+            {
+                return 2 + this.Header.Length + this.Payload.Count + 1;
+            }
+        }
     }
 
     // Represents a manufacturer-specific System Exclusive message.
@@ -186,6 +233,31 @@ namespace SyxPack
             result.AddRange(this.Payload);
             result.Add(Constants.Terminator);
             return result;
+        }
+
+        //
+        // ISystemExclusiveData implementation
+        //
+
+        public override List<byte> Data
+        {
+            get
+            {
+                var result = new List<byte>();
+                result.Add(Constants.Initiator);
+                result.AddRange(this.Manufacturer.Data);
+                result.AddRange(this.Payload);
+                result.Add(Constants.Terminator);
+                return result;
+            }
+        }
+
+        public override int Length
+        {
+            get
+            {
+                return 1 + this.Manufacturer.Length + this.Payload.Count + 1;
+            }
         }
     }
 }

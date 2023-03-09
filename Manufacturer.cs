@@ -20,7 +20,7 @@ namespace SyxPack
         Development,
     }
 
-    public sealed class ManufacturerDefinition
+    public sealed class ManufacturerDefinition : ISystemExclusiveData
     {
         public ManufacturerKind Kind { get; }
 
@@ -350,5 +350,25 @@ namespace SyxPack
             { "004006", "Pioneer Corporation" },
             { "004007", "Slik Corporation" },
         };
+
+        //
+        // ISystemExclusiveData implementation
+        //
+
+        public List<byte> Data
+        {
+            get
+            {
+                return this.Identifier.ToList();
+            }
+        }
+
+        public int Length
+        {
+            get
+            {
+                return this.Identifier.Length;
+            }
+        }
     }
 }
