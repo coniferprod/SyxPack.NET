@@ -192,12 +192,6 @@ namespace SyxPack
             return builder.ToString();
         }
 
-        // Gets the System Exclusive data of this manufacturer
-        public List<byte> ToData()
-        {
-            return this.Identifier.ToList();
-        }
-
         // Pre-made instance for a "Development/Non-commercial" manufacturer
         public static readonly ManufacturerDefinition Development;
 
@@ -297,8 +291,67 @@ namespace SyxPack
             { "000013", "Temporal Acuity Products" },
             { "000014", "Perfect Fretworks" },
             { "000015", "KAT Inc." },
+            { "000016", "Opcode Systems" },
+            { "000017", "Rane Corporation" },
+            { "000018", "Anadi Electronique" },
+            { "000019", "KMX" },
+            { "00001A", "Allen & Heath Brenell" },
+            { "00001B", "Peavey Electronics" },
+            { "00001C", "360 Systems" },
+            { "00001D", "Spectrum Design and Development" },
+            { "00001E", "Marquis Music" },
+            { "00001F", "Zeta Systems" },
+            { "000020", "Axxes (Brian Parsonett)" },
+            { "000021", "Orban" },
+            { "000022", "Indian Valley Mfg." },
+            { "000023", "Triton" },
+            { "000024", "KTI" },
+            { "000025", "Breakway Technologies" },
+            { "000026", "Leprecon / CAE Inc." },
+            { "000027", "Harrison Systems Inc." },
+            { "000028", "Future Lab/Mark Kuo" },
+            { "000029", "Rocktron Corporation" },
+            { "00002A", "PianoDisc" },
+            { "00002B", "Cannon Research Group" },
+            { "00002C", "Reserved" },
+            { "00002D", "Rodgers Instrument LLC" },
+            { "00002E", "Blue Sky Logic" },
+            { "00002F", "Encore Electronics" },
+            { "000030", "Uptown" },
+            { "000031", "Voce" },
+            { "000032", "CTI Audio, Inc. (Musically Intel. Devs.)" },
+            { "000033", "S3 Incorporated" },
+            { "000034", "Broderbund / Red Orb" },
+            { "000035", "Allen Organ Co." },
+            { "000036", "Reserved" },
+            { "000037", "Music Quest" },
+            { "000038", "Aphex" },
+            { "000039", "Gallien Krueger" },
+            { "00003A", "IBM" },
+            { "00003B", "Mark Of The Unicorn" },
+            { "00003C", "Hotz Corporation" },
+            { "00003D", "ETA Lighting" },
+            { "00003E", "NSI Corporation" },
+            { "00003F", "Ad Lib, Inc." },
+            { "000040", "Richmond Sound Design" },
+            { "000041", "Microsoft" },
+            { "000042", "Mindscape (Software Toolworks)" },
+            { "000043", "Russ Jones Marketing / Niche" },
+            { "000044", "Intone" },
+            { "000045", "Advanced Remote Technologies" },
+            { "000046", "White Instruments" },
+            { "000047", "GT Electronics/Groove Tubes" },
+            { "000048", "Pacific Research & Engineering" },
+            { "000049", "Timeline Vista, Inc." },
+            { "00004A", "Mesa Boogie Ltd." },
+            { "00004B", "FSLI" },
+            { "00004C", "Sequoia Development Group" },
+            { "00004D", "Studio Electronics" },
+            { "00004E", "Euphonix, Inc" },
+            { "00004F", "InterMIDI, Inc." },
 
-                // European & Other Group
+
+            // European & Other Group
             { "002000", "Dream SAS" },
             { "002001", "Strand Lighting" },
             { "002002", "Amek Div of Harman Industries" },
@@ -312,8 +365,37 @@ namespace SyxPack
             { "00200A", "Audiomatica" },
             { "00200B", "Bontempi SpA (Sigma)" },
             { "00200C", "F.B.T. Elettronica SpA" },
+            { "00200D", "MidiTemp GmbH" },
+            { "00200E", "LA Audio (Larking Audio)" },
+            { "00200F", "Zero 88 Lighting Limited" },
+            { "002010", "Micon Audio Electronics GmbH" },
+            { "002011", "Forefront Technology" },
+            { "002012", "Studio Audio and Video Ltd." },
+            { "002013", "Kenton Electronics" },
+
+            { "00201F", "TC Electronics" },
+            { "002020", "Doepfer Musikelektronik GmbH" },
+            { "002021", "Creative ATC / E-mu" },
 
             { "002029", "Focusrite/Novation" },
+
+            { "002032", "Behringer GmbH" },
+            { "002033", "Access Music Electronics" },
+
+            { "00203A", "Propellerhead Software" },
+
+            { "00206B", "Arturia" },
+            { "002076", "Teenage Engineering" },
+
+            { "002103", "PreSonus Software Ltd" },
+
+            { "002109", "Native Instruments" },
+
+            { "002110", "ROLI Ltd" },
+
+            { "00211A", "IK Multimedia" },
+
+            { "00211D", "Ableton" },
 
             { "40", "Kawai Musical Instruments MFG. CO. Ltd" },
             { "41", "Roland Corporation" },
@@ -355,6 +437,7 @@ namespace SyxPack
         // ISystemExclusiveData implementation
         //
 
+        // Gets the System Exclusive data of this manufacturer identifier.
         public List<byte> Data
         {
             get
@@ -363,7 +446,7 @@ namespace SyxPack
             }
         }
 
-        public int Length
+        public int DataLength
         {
             get
             {

@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Linq;
 
 namespace SyxPack
 {
@@ -32,7 +34,7 @@ namespace SyxPack
             }
         }
 
-        public int Length => 3;
+        public int DataLength => 3;
     }
 
     // Abstract base class for System Exclusive messages.
@@ -120,14 +122,12 @@ namespace SyxPack
             }
         }
 
-        public abstract List<byte> ToData();
-
         //
         // ISystemExclusiveData implementation
         //
 
         public abstract List<byte> Data { get; }
-        public abstract int Length { get; }
+        public abstract int DataLength { get; }
     }
 
     // Represents a Universal System Exclusive message.
@@ -156,26 +156,13 @@ namespace SyxPack
             return builder.ToString();
         }
 
-        // Gets the System Exclusive data for this message.
-        // This is ready for sending down the wire to a MIDI device,
-        // since it includes the SysEx initiator and terminator bytes.
-        public override List<byte> ToData()
-        {
-            var result = new List<byte>();
-            result.Add(Constants.Initiator);
-            result.Add(this.IsRealtime ? Constants.UniversalRealTime : Constants.UniversalNonRealTime);
-            result.Add(this.Header.DeviceChannel);
-            result.Add(this.Header.SubId1);
-            result.Add(this.Header.SubId2);
-            result.AddRange(this.Payload);
-            result.Add(Constants.Terminator);
-            return result;
-        }
-
         //
         // ISystemExclusiveData implementation
         //
 
+        // Gets the System Exclusive data for this message.
+        // This is ready for sending down the wire to a MIDI device,
+        // since it includes the SysEx initiator and terminator bytes.
         public override List<byte> Data
         {
             get
@@ -190,11 +177,11 @@ namespace SyxPack
             }
         }
 
-        public override int Length
+        public override int DataLength
         {
             get
             {
-                return 2 + this.Header.Length + this.Payload.Count + 1;
+                return 2 + this.Header.DataLength + this.Payload.Count + 1;
             }
         }
     }
@@ -222,23 +209,13 @@ namespace SyxPack
             return builder.ToString();
         }
 
-        // Gets the System Exclusive data for this message.
-        // This is ready for sending down the wire to a MIDI device,
-        // since it includes the SysEx initiator and terminator bytes.
-        public override List<byte> ToData()
-        {
-            var result = new List<byte>();
-            result.Add(Constants.Initiator);
-            result.AddRange(this.Manufacturer.ToData());
-            result.AddRange(this.Payload);
-            result.Add(Constants.Terminator);
-            return result;
-        }
-
         //
         // ISystemExclusiveData implementation
         //
 
+        // Gets the System Exclusive data for this message.
+        // This is ready for sending down the wire to a MIDI device,
+        // since it includes the SysEx initiator and terminator bytes.
         public override List<byte> Data
         {
             get
@@ -252,11 +229,11 @@ namespace SyxPack
             }
         }
 
-        public override int Length
+        public override int DataLength
         {
             get
             {
-                return 1 + this.Manufacturer.Length + this.Payload.Count + 1;
+                return 1 + this.Manufacturer.DataLength + this.Payload.Count + 1;
             }
         }
     }
