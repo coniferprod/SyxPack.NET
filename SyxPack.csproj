@@ -1,21 +1,22 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net7.0</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
     <LangVersion>10.0</LangVersion>
 
     <PackageId>SyxPack</PackageId>
-    <Version>0.6.0</Version>
+    <Version>0.7.0</Version>
     <Authors>Conifer Productions Oy</Authors>
     <Company>Conifer Productions Oy</Company>
 
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
 
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 
     <DebugType>embedded</DebugType>
 
-    <ImplicitUsings>enable</ImplicitUsings>
+    <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
