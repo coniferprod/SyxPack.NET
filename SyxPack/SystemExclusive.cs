@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-
 public interface ISystemExclusiveData
 {
     // Gets the data of the SysEx message
