@@ -1,3 +1,5 @@
+namespace SyxPack;
+
 public interface ISystemExclusiveData
 {
     // Gets the data of the SysEx message
